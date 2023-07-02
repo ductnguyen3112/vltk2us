@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const mysql = require('mysql');
 const crypto = require('crypto');
-
+const jwt = require('jsonwebtoken');
 const dotenv = require('dotenv');
 
 // Load environment variables from .env file
@@ -90,7 +90,20 @@ router.post('/login', (req, res) => {
       } else {
         const user = results[0];
         const { username, email, fullname, role } = user;
-        return res.status(200).json({ username, email, fullname, role });
+
+        // Generate JWT token
+        const token = jwt.sign(
+          {
+            username: user.username,
+            email: user.email,
+            fullname: user.fullname,
+            role: user.role
+          },
+          process.env.JWT_SECRET,
+          { expiresIn: '1h' }
+        );
+
+        return res.status(200).json({ token, username, email, fullname, role });
       }
     });
   } catch (err) {
@@ -98,6 +111,7 @@ router.post('/login', (req, res) => {
     return res.status(500).json({ error: 'Internal Server Error' });
   }
 });
+
 
 // Password Reset
 router.post('/password-reset', (req, res) => {
