@@ -22,6 +22,64 @@ const paysys = mysql.createPool({
   database: process.env.PAYSYS_DATABASE
 });
 
+
+router.post('/rename', (req, res) => {
+  const oldName = req.body.oldname;
+  const newName = req.body.newname;
+
+  pool.getConnection((err, connection) => {
+    if (err) {
+      console.error('Error connecting to the database');
+      res.status(500).json({ error: 'Internal Server Error' });
+      return;
+    }
+
+    const query = `SELECT * FROM role WHERE RoleName = ?`;
+
+    connection.query(query, [oldName], (err, results) => {
+      if (err) {
+        console.error('Error executing the query');
+        res.status(500).json({ error: 'Internal Server Error' });
+        connection.release();
+        return;
+      }
+
+      if (results.length === 0) {
+        res.send('Rolename Not Exist');
+      } else {
+        const accountData = results[0];
+
+        let fullInfoHex = Buffer.from(accountData.FullInfo, 'binary').toString('hex');
+        let listItemHex = Buffer.from(accountData.ListItem, 'binary').toString('hex');
+
+        const oldNameHex = Buffer.from(oldName, 'utf8').toString('hex');
+        const newNameHex = Buffer.from(newName, 'utf8').toString('hex').padEnd(oldNameHex.length, '0');
+
+        fullInfoHex = fullInfoHex.replace(oldNameHex, newNameHex);
+        listItemHex = listItemHex.replace(oldNameHex, newNameHex);
+
+        const updateQuery = `UPDATE role SET RoleName = ?, FullInfo = x'${fullInfoHex}', ListItem = x'${listItemHex}' WHERE RoleName = ?`;
+
+        connection.query(updateQuery, [newName, oldName], (err, updateResult) => {
+          connection.release();
+
+          if (err) {
+            console.error('Error executing the update query');
+            res.status(500).json({ error: 'Internal Server Error' });
+            return;
+          }
+
+          if (updateResult.affectedRows > 0) {
+            res.send('Success');
+          } else {
+            res.send('Data not changed');
+          }
+        });
+      }
+    });
+  });
+});
+
 // Registration
 router.post('/register', (req, res) => {
   const { username, email, password, secpassword, fullname } = req.body;
