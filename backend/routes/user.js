@@ -150,7 +150,7 @@ router.post('/password-reset', (req, res) => {
     });
   } catch (err) {
     console.error('Error in the password reset process', err);
-    return res.status(500).json({ error: 'Internal Server Error' });
+    return res.status(500).json({ error: 'Internal Server' });
   }
 });
 
