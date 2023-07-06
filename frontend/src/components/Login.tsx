@@ -1,28 +1,34 @@
-import * as React from 'react';
-import Avatar from '@mui/material/Avatar';
-import Button from '@mui/material/Button';
-import CssBaseline from '@mui/material/CssBaseline';
-import TextField from '@mui/material/TextField';
-import FormControlLabel from '@mui/material/FormControlLabel';
-import Checkbox from '@mui/material/Checkbox';
-import Link from '@mui/material/Link';
-import Grid from '@mui/material/Grid';
-import Box from '@mui/material/Box';
-import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
-import Typography from '@mui/material/Typography';
-import Container from '@mui/material/Container';
-import { createTheme, ThemeProvider } from '@mui/material/styles';
-import axios from 'axios';
+import * as React from "react";
+import Avatar from "@mui/material/Avatar";
+import Button from "@mui/material/Button";
+import CssBaseline from "@mui/material/CssBaseline";
+import TextField from "@mui/material/TextField";
+import FormControlLabel from "@mui/material/FormControlLabel";
+import Checkbox from "@mui/material/Checkbox";
+import Link from "@mui/material/Link";
+import Grid from "@mui/material/Grid";
+import Box from "@mui/material/Box";
+import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
+import Typography from "@mui/material/Typography";
+import Container from "@mui/material/Container";
+import { createTheme, ThemeProvider } from "@mui/material/styles";
+import axios from "axios";
+import { API_URL } from "./Token";
 
 function Copyright(props: any) {
   return (
-    <Typography variant="body2" color="text.secondary" align="center" {...props}>
-      {'Copyright © '}
+    <Typography
+      variant="body2"
+      color="text.secondary"
+      align="center"
+      {...props}
+    >
+      {"Copyright © "}
       <Link color="inherit" href="https://webunity.ca/">
         WebUnity
-      </Link>{' '}
+      </Link>{" "}
       {new Date().getFullYear()}
-      {'.'}
+      {"."}
     </Typography>
   );
 }
@@ -34,24 +40,33 @@ export default function Login() {
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const data = new FormData(event.currentTarget);
-    const username = data.get('username');
-    const password = data.get('password');
-  
+    const username = data.get("username");
+    const password = data.get("password");
+
     try {
-      const response = await axios.post('https://update.vltk2us.com/api/login', { username, password });
-      const { token } = response.data;
-  
-      // Save token to local storage
-      localStorage.setItem('token', token);
-  
-      // Handle the response or redirect to another page
-      // ...
+      const response = await axios.post(`${API_URL}api/login`, {
+        username,
+        password,
+      });
+      console.log(response.data); // Log the entire response data object
+
+      // Ensure that the token field is present in the response
+      if ("token" in response.data) {
+        const token = response.data.token;
+
+        // Save token to local storage
+        localStorage.setItem("token", token);
+        window.location.href = "/";
+        // Handle the response or redirect to another page
+        // ...
+      } else {
+        console.log("Token field not found in the response");
+      }
     } catch (error) {
       console.error(error);
       // Handle error cases
     }
   };
-  
 
   return (
     <ThemeProvider theme={defaultTheme}>
@@ -60,18 +75,23 @@ export default function Login() {
         <Box
           sx={{
             marginTop: 5,
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
           }}
         >
-          <Avatar sx={{ m: 1, bgcolor: 'primary.main' }}>
+          <Avatar sx={{ m: 1, bgcolor: "primary.main" }}>
             <LockOutlinedIcon />
           </Avatar>
           <Typography component="h1" variant="h5">
             Sign In
           </Typography>
-          <Box component="form" onSubmit={handleSubmit} noValidate sx={{ mt: 1 }}>
+          <Box
+            component="form"
+            onSubmit={handleSubmit}
+            noValidate
+            sx={{ mt: 1 }}
+          >
             <TextField
               margin="normal"
               required
