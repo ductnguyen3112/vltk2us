@@ -14,12 +14,20 @@ import Toolbar from "@mui/material/Toolbar";
 import Typography from "@mui/material/Typography";
 import Container from "@mui/material/Container";
 import Link from "@mui/material/Link";
+import Dialog from "@mui/material/Dialog";
+import DialogTitle from "@mui/material/DialogTitle";
+import { IconButton } from "@mui/material";
 import { createTheme, ThemeProvider } from "@mui/material/styles";
 import { TokenData } from "./Token";
 import Mill from "../images/1.png";
 import FourH from "../images/2.png";
 import TwoH from "../images/3.png";
 import { PayPalScriptProvider, PayPalButtons } from "@paypal/react-paypal-js";
+import Player from "react-lottie-player";
+import animationData from "../images/69380-success-check.json";
+import animationFail from "../images/94303-failed.json";
+import CloseIcon from "@mui/icons-material/Close";
+import TextField from "@mui/material/TextField";
 
 function Copyright() {
   return (
@@ -40,41 +48,92 @@ const cards = [
 ];
 
 function Donation({ username }: { username: string }) {
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [dialogDetail, setDialogDetail] = useState("");
+  const [isAnimationVisible, setIsAnimationVisible] = useState({});
+
+  const handleDialogOpen = () => {
+    setIsDialogOpen(true);
+  };
+
+  const handleDialogClose = () => {
+    setIsDialogOpen(false);
+  };
   interface PaymentData {
     // Define the properties of the data object
     orderID: string;
     facilitatorAccessToken: string;
   }
 
-  
-const handlePaymentSuccess = async (data: PaymentData, price: any) => {
-
-  try {
-    await axios.post("http://localhost:3333/api/payment", {
-      facilitatorAccessToken: data.facilitatorAccessToken,
-      orderID: data.orderID,
-      username: username,
-      coins: price,
-    });
-    // Handle the successful API call if needed
-  } catch (error) {
-    console.error("Error:", error);
-    // Handle the error if needed
-  }
-};
+  const handlePaymentSuccess = async (data: PaymentData, price: any) => {
+    try {
+      const response = await axios.post("http://localhost:3333/api/payment", {
+        facilitatorAccessToken: data.facilitatorAccessToken,
+        orderID: data.orderID,
+        username: username,
+        coins: price,
+      });
+      if (response.status === 200) {
+        // Handle the successful API call if needed
+        handleDialogOpen();
+        setDialogDetail(
+          `Nạp Thẻ Thành Công, Tài Khoản đã được thêm ${price}000 Xu`
+        );
+        setIsAnimationVisible(animationData);
+      } else {
+        setDialogDetail(
+          "Payment is Failed, Your Order Detail Sent to your Email"
+        );
+        handleDialogOpen();
+        setIsAnimationVisible(animationFail);
+        // Handle the unsuccessful API call if needed
+      }
+    } catch (error) {
+      console.error("Error:", error);
+      // Handle the error if needed
+    }
+  };
 
   const handlePaymentError = () => {
     console.log("error");
   };
 
   return (
-    <Container sx={{ py: 8 }} maxWidth="md" id="donation-section">
-      <Grid container spacing={4}>
+    <Container sx={{ py: 8 }} maxWidth="lg" id="donation-section">
+      <Dialog open={isDialogOpen} onClose={handleDialogClose}>
+        <Box sx={{ display: "flex", justifyContent: "flex-end" }}>
+          <IconButton
+            edge="end"
+            color="inherit"
+            onClick={handleDialogClose}
+            aria-label="close"
+            sx={{ position: "absolute", top: "-px", right: "5px" }}
+          >
+            <CloseIcon />
+          </IconButton>
+        </Box>
+        <Box
+          sx={{ display: "flex", justifyContent: "center", marginTop: "10px" }}
+        >
+          <Player
+            play
+            loop
+            animationData={isAnimationVisible}
+            style={{
+              width: "300px",
+              height: "300px",
+            }}
+          />
+        </Box>
+        <DialogTitle sx={{ textAlign: "center", marginBottom: "10px" }}>
+          {dialogDetail}
+        </DialogTitle>
+      </Dialog>
+
+      <Grid container spacing={5}>
         {cards.map((card) => (
           <Grid item key={card.id} xs={12} sm={6} md={4}>
-            <Card
-              sx={{ height: "100%", display: "flex", flexDirection: "column" }}
-            >
+            <Card>
               <Typography align="center" sx={{ marginTop: "10px" }}>
                 Vietin Bank
               </Typography>
@@ -119,8 +178,8 @@ const handlePaymentSuccess = async (data: PaymentData, price: any) => {
                     }}
                     onApprove={async (data, actions) => {
                       await actions?.order?.capture();
-                  
-                      handlePaymentSuccess(data, card.price); 
+
+                      handlePaymentSuccess(data, card.price);
                       // Remove the unnecessary object wrapper
                     }}
                     onError={handlePaymentError}
@@ -137,10 +196,17 @@ const handlePaymentSuccess = async (data: PaymentData, price: any) => {
 
 const Coin = ({ token }: { token: TokenData }) => {
   const [getDonation, setGetDonation] = useState(false);
+  const [getChangePass, setChangePass] = useState(false);
 
   const handleDonation = () => {
     setGetDonation((prevState) => !prevState);
   };
+
+  const handlePassword = () => {
+    setChangePass((prevState) => !prevState);
+  };
+
+  const handleSubmitPassword = () => {};
 
   useEffect(() => {
     if (getDonation) {
@@ -203,8 +269,49 @@ const Coin = ({ token }: { token: TokenData }) => {
               <Button variant="contained" onClick={handleDonation}>
                 Nạp Xu
               </Button>
-              <Button variant="outlined">Đổi Mật Khẩu</Button>
+              <Button variant="outlined" onClick={handlePassword}>
+                Đổi Mật Khẩu
+              </Button>
             </Stack>
+
+            {getChangePass && (
+              <Box component="form" onSubmit={handleSubmitPassword}>
+                <TextField
+                  type="password"
+                  variant="outlined"
+                  margin="normal"
+                  required
+                  fullWidth
+                  id="password"
+                  label="Mật Khẩu Mới"
+                  name="password"
+                  autoFocus
+                  // value={password}
+                  // onChange={handlePasswordChange}
+                />
+                <TextField
+                  type="password"
+                  variant="outlined"
+                  margin="normal"
+                  required
+                  fullWidth
+                  id="secPassword"
+                  label="Mật Khẩu Cấp 2 Mới"
+                  name="secPassword"
+                  // value={secPassword}
+                  // onChange={handleSecPasswordChange}
+                />
+                <Stack direction="row" justifyContent="center" spacing={2} sx={{marginTop:"10px"}}>
+                  <Button
+                    type="submit"
+                    variant="contained"
+                    onClick={handleSubmitPassword}
+                  >
+                    Xác Nhận Đổi Mật Khẩu
+                  </Button>
+                </Stack>
+              </Box>
+            )}
           </Container>
         </Box>
         {getDonation && <Donation username={token.username} />}

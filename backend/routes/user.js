@@ -197,7 +197,7 @@ router.post('/payment', async (req, res) => {
     const paymentStatus = response.data.status;
 
     if (paymentStatus === 'COMPLETED') {
-      console.log('Payment is completed', username, coins);
+     // console.log('Payment is completed', username, coins);
       // Perform further actions for a completed payment
 
       // Example: Update the payment status in your database
@@ -212,14 +212,17 @@ router.post('/payment', async (req, res) => {
           if (err) {
             console.error('Error executing the update query:', err);
             // Handle the error if needed
+            res.status(500).json({ status: 'error', message: 'Error updating the coin value' });
           } else {
             // Handle the successful update if needed
-            console.log('Coin value updated successfully:', result);
+           // console.log('Coin value updated successfully:', result);
+            res.status(200).json({ status: 'success', message: 'Payment is completed' });
           }
         });
       } catch (error) {
         console.error('Error updating the coin value:', error);
         // Handle the error if needed
+        res.status(500).json({ status: 'error', message: 'Error updating the coin value' });
       }
     } else {
       console.log('Payment is not completed');
@@ -227,17 +230,17 @@ router.post('/payment', async (req, res) => {
 
       // Example: Update the payment status in your database
       await updatePaymentStatus(orderID, 'INCOMPLETE');
+      res.status(200).json({ status: 'success', message: 'Payment is not completed' });
     }
-    res.sendStatus(200);
   } catch (error) {
     console.error('Error verifying payment:', error.response?.data || error.message);
 
     // Example: Update the payment status in your database
     await updatePaymentStatus(req.body.orderID, 'ERROR');
-
-    res.sendStatus(500);
+    res.status(500).json({ status: 'error', message: 'Error verifying payment' });
   }
 });
+
 
 async function updatePaymentStatus(orderID, username, coins, paymentStatus) {
   if (paymentStatus === 'COMPLETED') {
@@ -253,7 +256,7 @@ async function updatePaymentStatus(orderID, username, coins, paymentStatus) {
           // Handle the error if needed
         } else {
           // Handle the successful napthe table update if needed
-          console.log('napthe table updated successfully:', naptheResult);
+         // console.log('napthe table updated successfully:', naptheResult);
         }
       });
     } catch (error) {

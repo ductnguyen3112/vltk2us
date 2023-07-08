@@ -12,8 +12,12 @@ import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
 import Typography from "@mui/material/Typography";
 import Container from "@mui/material/Container";
 import { createTheme, ThemeProvider } from "@mui/material/styles";
-import axios from "axios";
+import axios, { AxiosError } from 'axios';
+
 import { API_URL } from "./Token";
+
+import { useState } from "react";
+import Alert from "@mui/material/Alert"; // you might need to install '@mui/material' to use Alert
 
 function Copyright(props: any) {
   return (
@@ -37,34 +41,34 @@ function Copyright(props: any) {
 const defaultTheme = createTheme();
 
 export default function Login() {
+  const [errorMessage, setErrorMessage] = useState(""); // Add this line to create an error message state
+
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const data = new FormData(event.currentTarget);
     const username = data.get("username");
     const password = data.get("password");
-
+  
     try {
       const response = await axios.post(`${API_URL}api/login`, {
         username,
         password,
       });
-      console.log(response.data); // Log the entire response data object
-
-      // Ensure that the token field is present in the response
+  
+      // This block is only entered if the request was successful (status 200)
       if ("token" in response.data) {
         const token = response.data.token;
-
-        // Save token to local storage
         localStorage.setItem("token", token);
         window.location.href = "/";
-        // Handle the response or redirect to another page
-        // ...
-      } else {
-        console.log("Token field not found in the response");
       }
     } catch (error) {
-      console.error(error);
-      // Handle error cases
+      const axiosError = error as AxiosError;
+      // This block is entered for HTTP errors (like 401)
+      if (axiosError.response && axiosError.response.status === 401) {
+        setErrorMessage("Check Username or Password!");
+      } else {
+        setErrorMessage("An error occurred!");
+      }
     }
   };
 
@@ -86,6 +90,8 @@ export default function Login() {
           <Typography component="h1" variant="h5">
             Sign In
           </Typography>
+          {errorMessage && <Alert severity="error">{errorMessage}</Alert>}
+
           <Box
             component="form"
             onSubmit={handleSubmit}

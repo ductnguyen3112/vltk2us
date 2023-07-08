@@ -6,6 +6,8 @@ import Logo from "../logo.svg";
 import { validateToken, TokenData } from "./Token";
 import Coin from "./Coin";
 
+
+
 const OverviewWrapper = styled(Box)(
   () => `
     overflow: auto;
@@ -36,7 +38,8 @@ function Layout() {
 
   return (
     <OverviewWrapper>
-      <Container maxWidth="lg">
+
+      <Container maxWidth="xl">
         <Box display="flex" justifyContent="center"  alignItems="center" style={{ marginBottom: '-30px'}}>
           <img
             src={Logo}
@@ -46,7 +49,7 @@ function Layout() {
         </Box>
         {loggedIn ? (
           token ? (
-            <Container maxWidth="md">
+            <Container maxWidth="lg">
             <Coin token={token} />
             </Container>
           ) : null // Pass the token as a prop
