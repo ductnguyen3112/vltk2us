@@ -4,9 +4,11 @@ const mysql = require('mysql');
 const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
 const dotenv = require('dotenv');
-
-// Load environment variables from .env file
+const axios = require('axios');
 dotenv.config();
+
+const JWT_SECRET = process.env.PRIVATE_KEY;
+
 
 const pool = mysql.createPool({
   host: process.env.DB_HOST,
@@ -150,16 +152,25 @@ router.post('/login', (req, res) => {
         const { username, email, fullname, role } = user;
 
         // Generate JWT token
-        const token = jwt.sign(
-          {
-            username: user.username,
-            email: user.email,
-            fullname: user.fullname,
-            role: user.role
-          },
-          process.env.JWT_SECRET,
-          { expiresIn: '1h' }
-        );
+        let token;
+
+        try {
+          token = jwt.sign(
+            {
+              username: user.username,
+              email: user.email,
+              fullname: user.fullname,
+              role: user.role
+            },
+            JWT_SECRET,
+            { expiresIn: '1h' }
+          );
+
+          // console.log('Generated token:', token); // Log the generated token for debugging
+        } catch (err) {
+          console.error('Error generating JWT', err);
+        }
+
 
         return res.status(200).json({ token, username, email, fullname, role });
       }
@@ -174,7 +185,7 @@ router.post('/login', (req, res) => {
 // Password Reset
 router.post('/password-reset', (req, res) => {
   const { username, secpassword, password } = req.body;
-  console.log(username,secpassword,password)
+  console.log(username, secpassword, password)
   try {
     // Validate user input
     if (!username || !secpassword || !password) {
@@ -183,10 +194,10 @@ router.post('/password-reset', (req, res) => {
 
     // Verify secpassword (assuming it's hashed using MD5)
     const hashedSecPassword = crypto.createHash('md5').update(secpassword).digest('hex');
-  
+
     // Construct the SQL query to verify secpassword
     const verifyQuery = 'SELECT * FROM account WHERE username = ? AND secpassword = ?';
-  
+
     // Execute the query using the paysys pool
     paysys.query(verifyQuery, [username, hashedSecPassword], (err, verifyResult) => {
       if (err) {
@@ -222,11 +233,100 @@ router.post('/password-reset', (req, res) => {
     });
   } catch (err) {
     console.error('Error in the password reset process', err);
-    return res.status(500).json({ error: 'Internal Server Error' });
+    return res.status(500).json({ error: 'Internal Server' });
   }
 });
 
 
 
+// POST route for handling payment success
+router.post('/payment', async (req, res) => {
+  try {
+    const { orderID, facilitatorAccessToken, username, coins } = req.body;
+
+    // Verify the payment using PayPal API
+    const response = await axios.get(`https://api.sandbox.paypal.com/v2/checkout/orders/${orderID}`, {
+      headers: {
+        Authorization: `Bearer ${facilitatorAccessToken}`,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    const paymentStatus = response.data.status;
+
+    if (paymentStatus === 'COMPLETED') {
+     // console.log('Payment is completed', username, coins);
+      // Perform further actions for a completed payment
+
+      // Example: Update the payment status in your database
+      await updatePaymentStatus(orderID, username, coins, 'COMPLETED');
+
+      try {
+        const updateQuery = 'UPDATE account SET coin = coin + ? WHERE username = ?';
+        const updateValues = [coins, username];
+
+        // Execute the update query using the pool
+        paysys.query(updateQuery, updateValues, (err, result) => {
+          if (err) {
+            console.error('Error executing the update query:', err);
+            // Handle the error if needed
+            res.status(500).json({ status: 'error', message: 'Error updating the coin value' });
+          } else {
+            // Handle the successful update if needed
+           // console.log('Coin value updated successfully:', result);
+            res.status(200).json({ status: 'success', message: 'Payment is completed' });
+          }
+        });
+      } catch (error) {
+        console.error('Error updating the coin value:', error);
+        // Handle the error if needed
+        res.status(500).json({ status: 'error', message: 'Error updating the coin value' });
+      }
+    } else {
+      console.log('Payment is not completed');
+      // Handle other payment statuses accordingly
+
+      // Example: Update the payment status in your database
+      await updatePaymentStatus(orderID, 'INCOMPLETE');
+      res.status(200).json({ status: 'success', message: 'Payment is not completed' });
+    }
+  } catch (error) {
+    console.error('Error verifying payment:', error.response?.data || error.message);
+
+    // Example: Update the payment status in your database
+    await updatePaymentStatus(req.body.orderID, 'ERROR');
+    res.status(500).json({ status: 'error', message: 'Error verifying payment' });
+  }
+});
+
+
+async function updatePaymentStatus(orderID, username, coins, paymentStatus) {
+  if (paymentStatus === 'COMPLETED') {
+    try {
+      const naptheQuery = 'INSERT INTO napthe (payment, username, amount, status) VALUES (?, ?, ?, ?)';
+      const naptheValues = [orderID, username, coins, paymentStatus];
+
+
+      // Execute the napthe table update query using the pool
+      paysys.query(naptheQuery, naptheValues, (naptheErr, naptheResult) => {
+        if (naptheErr) {
+          console.error('Error executing the napthe table update query:', naptheErr);
+          // Handle the error if needed
+        } else {
+          // Handle the successful napthe table update if needed
+         // console.log('napthe table updated successfully:', naptheResult);
+        }
+      });
+    } catch (error) {
+      console.error('Error updating the napthe table:', error);
+      // Handle the error if needed
+    }
+  } else {
+    // Handle other payment statuses if needed
+  }
+}
 
 module.exports = router;
+
+
+
