@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import axios from "axios";
+import axios, { AxiosError } from "axios";
 import AppBar from "@mui/material/AppBar";
 import Button from "@mui/material/Button";
 import Card from "@mui/material/Card";
@@ -28,6 +28,8 @@ import animationData from "../images/69380-success-check.json";
 import animationFail from "../images/94303-failed.json";
 import CloseIcon from "@mui/icons-material/Close";
 import TextField from "@mui/material/TextField";
+import { API_URL } from "./Token";
+import Alert from "@mui/material/Alert";
 
 function Copyright() {
   return (
@@ -67,7 +69,7 @@ function Donation({ username }: { username: string }) {
 
   const handlePaymentSuccess = async (data: PaymentData, price: any) => {
     try {
-      const response = await axios.post("http://localhost:3333/api/payment", {
+      const response = await axios.post(`${API_URL}api/payment`, {
         facilitatorAccessToken: data.facilitatorAccessToken,
         orderID: data.orderID,
         username: username,
@@ -197,7 +199,7 @@ function Donation({ username }: { username: string }) {
 const Coin = ({ token }: { token: TokenData }) => {
   const [getDonation, setGetDonation] = useState(false);
   const [getChangePass, setChangePass] = useState(false);
-
+  const [initMessage, setInitMessage] = useState("");
   const handleDonation = () => {
     setGetDonation((prevState) => !prevState);
   };
@@ -206,7 +208,42 @@ const Coin = ({ token }: { token: TokenData }) => {
     setChangePass((prevState) => !prevState);
   };
 
-  const handleSubmitPassword = () => {};
+  const handleSubmitPassword = async (
+    event: React.FormEvent<HTMLFormElement>
+  ) => {
+    event.preventDefault();
+    const data = new FormData(event.currentTarget);
+
+    const password = data.get("password");
+    const secpassword = data.get("secPassword");
+    const username = token.username;
+    if (!username || !secpassword || !password) {
+      setInitMessage("Kiểm tra lại thông tin!");
+      return; // stop function execution here
+    }
+
+    try {
+      const response = await axios.post(`${API_URL}api/password-reset`, {
+        username,
+        secpassword,
+        password,
+      });
+
+      if (response.status === 200) {
+        setInitMessage("Đổi Tài Khoản Thành Công");
+      }
+
+      // This block is only entered if the request was successful (status 200)
+    } catch (error) {
+      const axiosError = error as AxiosError;
+      // This block is entered for HTTP errors (like 401)
+      if (axiosError.response && axiosError.response.status === 401) {
+        setInitMessage("Kiểm tra lại thông tin!");
+      } else {
+        setInitMessage("Lỗi, Liên Lạc Với Admin để nhận hỗ trợ!");
+      }
+    }
+  };
 
   useEffect(() => {
     if (getDonation) {
@@ -275,7 +312,12 @@ const Coin = ({ token }: { token: TokenData }) => {
             </Stack>
 
             {getChangePass && (
-              <Box component="form" onSubmit={handleSubmitPassword}>
+              <Box component="form" onSubmit={handleSubmitPassword} noValidate>
+                {initMessage && (
+                  <Alert sx={{ marginTop: "10px" }} severity="error">
+                    {initMessage}
+                  </Alert>
+                )}
                 <TextField
                   type="password"
                   variant="outlined"
@@ -286,8 +328,6 @@ const Coin = ({ token }: { token: TokenData }) => {
                   label="Mật Khẩu Mới"
                   name="password"
                   autoFocus
-                  // value={password}
-                  // onChange={handlePasswordChange}
                 />
                 <TextField
                   type="password"
@@ -298,15 +338,14 @@ const Coin = ({ token }: { token: TokenData }) => {
                   id="secPassword"
                   label="Mật Khẩu Cấp 2 Mới"
                   name="secPassword"
-                  // value={secPassword}
-                  // onChange={handleSecPasswordChange}
                 />
-                <Stack direction="row" justifyContent="center" spacing={2} sx={{marginTop:"10px"}}>
-                  <Button
-                    type="submit"
-                    variant="contained"
-                    onClick={handleSubmitPassword}
-                  >
+                <Stack
+                  direction="row"
+                  justifyContent="center"
+                  spacing={2}
+                  sx={{ marginTop: "10px" }}
+                >
+                  <Button type="submit" fullWidth variant="contained">
                     Xác Nhận Đổi Mật Khẩu
                   </Button>
                 </Stack>

@@ -86,40 +86,62 @@ router.post('/rename', (req, res) => {
 router.post('/register', (req, res) => {
   const { username, email, password, secpassword, fullname } = req.body;
 
+
   try {
     // Validate user input
     if (!username || !email || !password || !secpassword || !fullname) {
+    
       return res.status(400).json({ error: 'All fields are required' });
+      
     }
 
     // Hash the passwords using MD5
     const hashedPassword = crypto.createHash('md5').update(password).digest('hex');
     const hashedSecPassword = crypto.createHash('md5').update(secpassword).digest('hex');
 
-    // Construct the SQL query
-    const query = 'INSERT INTO account (username, email, password, secpassword, fullname, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)';
+    // Construct the SQL query to check username existence
+    const checkQuery = 'SELECT COUNT(*) AS count FROM account WHERE username = ?';
+    // Construct the SQL query to insert user data
+    const insertQuery = 'INSERT INTO account (username, email, password, secpassword, fullname, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)';
 
     const currentTimestamp = new Date().toISOString().slice(0, 19).replace('T', ' ');
 
-    // Execute the query using the pool
-    paysys.query(query, [username, email, hashedPassword, hashedSecPassword, fullname, currentTimestamp, currentTimestamp], (err, result) => {
-      if (err) {
-        console.error('Error executing the registration query', err);
+    // Execute the query to check username existence
+    paysys.query(checkQuery, [username], (checkErr, checkResult) => {
+      if (checkErr) {
+        console.error('Error executing the username check query', checkErr);
         return res.status(500).json({ error: 'Internal Server Error' });
       }
 
-      // Check the result and send a response
-      if (result.affectedRows > 0) {
-        return res.status(200).json({ message: 'Registration successful' });
-      } else {
-        return res.status(500).json({ error: 'Registration failed' });
+      // Check if username already exists
+      if (checkResult[0].count > 0) {
+
+        return res.status(400).json({ error: 'Username already exists' });
+       
+        
       }
+
+      // Execute the query to insert user data
+      paysys.query(insertQuery, [username, email, hashedPassword, hashedSecPassword, fullname, currentTimestamp, currentTimestamp], (err, result) => {
+        if (err) {
+          console.error('Error executing the registration query', err);
+          return res.status(500).json({ error: 'Internal Server Error' });
+        }
+
+        // Check the result and send a response
+        if (result.affectedRows > 0) {
+          return res.status(200).json({ message: 'Registration successful' });
+        } else {
+          return res.status(500).json({ error: 'Registration failed' });
+        }
+      });
     });
   } catch (err) {
     console.error('Error in the registration process', err);
     return res.status(500).json({ error: 'Internal Server Error' });
   }
 });
+
 
 // Login
 router.post('/login', (req, res) => {
@@ -185,7 +207,7 @@ router.post('/login', (req, res) => {
 // Password Reset
 router.post('/password-reset', (req, res) => {
   const { username, secpassword, password } = req.body;
-  console.log(username, secpassword, password)
+
   try {
     // Validate user input
     if (!username || !secpassword || !password) {
